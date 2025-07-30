@@ -1,13 +1,25 @@
 export const tools = [
   {
     name: "read_file",
-    description: "ファイルの内容を読み取る",
+    description: "ファイルの内容を読み取る（全体または指定行数）",
     inputSchema: {
       type: "object",
       properties: {
         path: {
           type: "string",
           description: "読み取るファイルのパス",
+        },
+        start_line: {
+          type: "number",
+          description: "読み取り開始行番号（1から開始、省略時は1）",
+        },
+        end_line: {
+          type: "number", 
+          description: "読み取り終了行番号（省略時は最終行まで）",
+        },
+        max_lines: {
+          type: "number",
+          description: "最大読み取り行数（省略時は制限なし）",
         },
       },
       required: ["path"],

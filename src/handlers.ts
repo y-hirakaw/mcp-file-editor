@@ -7,11 +7,22 @@ export interface ToolResult {
   content: Array<{ type: string; text: string }>;
 }
 
-export async function handleReadFile(filePath: string, config: Config): Promise<ToolResult> {
+export interface ReadFileOptions {
+  start_line?: number;
+  end_line?: number;
+  max_lines?: number;
+}
+
+export async function handleReadFile(
+  filePath: string, 
+  config: Config, 
+  options?: ReadFileOptions
+): Promise<ToolResult> {
   try {
     console.error(`read_file: ${filePath}`);
     
     // バリデーション
+    // パストラバーサル攻撃防止チェック
     if (!validatePath(filePath)) {
       return {
         content: [
@@ -20,6 +31,7 @@ export async function handleReadFile(filePath: string, config: Config): Promise<
       };
     }
     
+    // 許可された拡張子かチェック
     if (!validateFileExtension(filePath, config)) {
       return {
         content: [
@@ -31,7 +43,7 @@ export async function handleReadFile(filePath: string, config: Config): Promise<
       };
     }
 
-    // ファイルサイズチェック
+    // ファイルサイズ制限チェック
     if (!await checkFileSize(filePath, config)) {
       return {
         content: [
@@ -41,6 +53,50 @@ export async function handleReadFile(filePath: string, config: Config): Promise<
     }
 
     const content = await fs.readFile(filePath, 'utf-8');
+    
+    // 行数指定がある場合は該当行のみを抽出
+    if (options?.start_line || options?.end_line || options?.max_lines) {
+      const lines = content.split('\n');
+      const totalLines = lines.length;
+      
+      // デフォルト値設定
+      const startLine = Math.max(1, options.start_line || 1);
+      const endLine = options.end_line || totalLines;
+      const maxLines = options.max_lines;
+      
+      // 行番号を0ベースのインデックスに変換
+      let startIndex = startLine - 1;
+      let endIndex = Math.min(endLine - 1, totalLines - 1);
+      
+      // max_linesが指定されている場合は制限を適用
+      if (maxLines && (endIndex - startIndex + 1) > maxLines) {
+        endIndex = startIndex + maxLines - 1;
+      }
+      
+      // 範囲チェック
+      if (startIndex < 0 || startIndex >= totalLines) {
+        return {
+          content: [
+            { type: "text", text: `エラー: 開始行 ${startLine} がファイルの範囲外です（総行数: ${totalLines}）` }
+          ]
+        };
+      }
+      
+      const selectedLines = lines.slice(startIndex, endIndex + 1);
+      const resultContent = selectedLines.join('\n');
+      
+      // 情報ヘッダーを追加
+      const actualEndLine = startIndex + selectedLines.length;
+      const header = `=== ファイル: ${filePath} ===\n=== 行 ${startLine}-${actualEndLine} / 総 ${totalLines} 行 ===\n\n`;
+      
+      return {
+        content: [
+          { type: "text", text: header + resultContent }
+        ]
+      };
+    }
+    
+    // オプション指定なしの場合は全ファイルを返す
     return {
       content: [
         { type: "text", text: content }
@@ -63,6 +119,7 @@ export async function handleWriteFile(filePath: string, content: string, config:
     console.error(`write_file: ${filePath}`);
     
     // バリデーション
+    // パストラバーサル攻撃防止チェック
     if (!validatePath(filePath)) {
       return {
         content: [
@@ -71,6 +128,7 @@ export async function handleWriteFile(filePath: string, content: string, config:
       };
     }
     
+    // 許可された拡張子かチェック
     if (!validateFileExtension(filePath, config)) {
       return {
         content: [
@@ -82,7 +140,7 @@ export async function handleWriteFile(filePath: string, content: string, config:
       };
     }
 
-    // 書き込み内容のサイズチェック
+    // 書き込み内容のサイズ制限チェック
     if (!validateContentSize(content, config)) {
       return {
         content: [
@@ -91,7 +149,7 @@ export async function handleWriteFile(filePath: string, content: string, config:
       };
     }
 
-    // ディレクトリが存在しない場合は作成
+    // 必要に応じて親ディレクトリを作成
     const dir = path.dirname(filePath);
     await fs.mkdir(dir, { recursive: true });
 
@@ -118,6 +176,7 @@ export async function handleFileExists(filePath: string): Promise<ToolResult> {
     console.error(`file_exists: ${filePath}`);
     
     // バリデーション
+    // パストラバーサル攻撃防止チェック
     if (!validatePath(filePath)) {
       return {
         content: [
@@ -149,6 +208,7 @@ export async function handleCreateFile(filePath: string, content: string, config
     console.error(`create_file: ${filePath}`);
     
     // バリデーション
+    // パストラバーサル攻撃防止チェック
     if (!validatePath(filePath)) {
       return {
         content: [
@@ -157,6 +217,7 @@ export async function handleCreateFile(filePath: string, content: string, config
       };
     }
     
+    // 許可された拡張子かチェック
     if (!validateFileExtension(filePath, config)) {
       return {
         content: [
@@ -168,7 +229,7 @@ export async function handleCreateFile(filePath: string, content: string, config
       };
     }
 
-    // ファイルが既に存在するかチェック
+    // ファイルの重複作成防止チェック
     const exists = await fs.access(filePath).then(() => true).catch(() => false);
     if (exists) {
       return {
@@ -178,7 +239,7 @@ export async function handleCreateFile(filePath: string, content: string, config
       };
     }
 
-    // 書き込み内容のサイズチェック
+    // 書き込み内容のサイズ制限チェック
     if (!validateContentSize(content, config)) {
       return {
         content: [
@@ -187,7 +248,7 @@ export async function handleCreateFile(filePath: string, content: string, config
       };
     }
 
-    // ディレクトリが存在しない場合は作成
+    // 必要に応じて親ディレクトリを作成
     const dir = path.dirname(filePath);
     await fs.mkdir(dir, { recursive: true });
 
@@ -214,6 +275,7 @@ export async function handleAppendFile(filePath: string, content: string, config
     console.error(`append_file: ${filePath}`);
     
     // バリデーション
+    // パストラバーサル攻撃防止チェック
     if (!validatePath(filePath)) {
       return {
         content: [
@@ -222,6 +284,7 @@ export async function handleAppendFile(filePath: string, content: string, config
       };
     }
     
+    // 許可された拡張子かチェック
     if (!validateFileExtension(filePath, config)) {
       return {
         content: [
@@ -233,7 +296,7 @@ export async function handleAppendFile(filePath: string, content: string, config
       };
     }
 
-    // ファイルが存在するかチェック
+    // 追記対象ファイルの存在チェック
     const exists = await fs.access(filePath).then(() => true).catch(() => false);
     if (!exists) {
       return {
@@ -243,7 +306,7 @@ export async function handleAppendFile(filePath: string, content: string, config
       };
     }
 
-    // 追記後のファイルサイズをチェック
+    // 追記後のファイルサイズ制限チェック
     const stats = await fs.stat(filePath);
     const newSize = stats.size + Buffer.byteLength(content, 'utf8');
     if (newSize > config.maxFileSize) {
@@ -277,6 +340,7 @@ export async function handleGetFileInfo(filePath: string, config: Config): Promi
     console.error(`get_file_info: ${filePath}`);
     
     // バリデーション
+    // パストラバーサル攻撃防止チェック
     if (!validatePath(filePath)) {
       return {
         content: [

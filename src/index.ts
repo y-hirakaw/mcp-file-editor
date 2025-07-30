@@ -45,21 +45,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   switch (name) {
     case "read_file":
-      return await handleReadFile(args?.path as string, config) as any;
+      // ファイルの内容を読み取る（拡張子・サイズ制限あり、行数指定可能）
+      return await handleReadFile(args?.path as string, config, {
+        start_line: args?.start_line as number,
+        end_line: args?.end_line as number,
+        max_lines: args?.max_lines as number,
+      }) as any;
 
     case "write_file":
+      // ファイルに内容を書き込む（既存ファイルを上書き）
       return await handleWriteFile(args?.path as string, args?.content as string, config) as any;
 
     case "file_exists":
+      // ファイルの存在確認
       return await handleFileExists(args?.path as string) as any;
 
     case "create_file":
+      // 新しいファイルを作成（既存ファイルがある場合はエラー）
       return await handleCreateFile(args?.path as string, (args?.content as string) || "", config) as any;
 
     case "append_file":
+      // ファイルに内容を追記する
       return await handleAppendFile(args?.path as string, args?.content as string, config) as any;
 
     case "get_file_info":
+      // ファイルの詳細情報を取得（サイズ、更新日時など）
       return await handleGetFileInfo(args?.path as string, config) as any;
 
     default:

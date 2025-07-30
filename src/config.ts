@@ -9,7 +9,15 @@ export function loadConfig(): Config {
         const trimmed = ext.trim();
         return trimmed.startsWith('.') ? trimmed : '.' + trimmed;
       })
-    : [".md", ".txt", ".json", ".yaml", ".yml", ".csv", ".log"];
+    : [
+        ".md", 
+        ".txt", 
+        ".json", 
+        ".yaml", 
+        ".yml", 
+        ".csv", 
+        ".log"
+      ];
 
   const maxFileSize = process.env.MAX_FILE_SIZE 
     ? parseInt(process.env.MAX_FILE_SIZE, 10)
