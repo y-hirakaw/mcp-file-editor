@@ -7,6 +7,8 @@ With this server you can read, write, create, append, and manage files in any di
 ## ✨ Features
 
 - **Read** file contents with extension validation
+  - **Line-specific reading**: Read specific line ranges or limit number of lines
+  - **Efficient large file handling**: Avoid loading entire files when only parts are needed
 - **Write** files (overwrite existing content)
 - **Create** new files (error if file already exists)
 - **Append** content to existing files
@@ -80,12 +82,39 @@ ALLOWED_EXTENSIONS=".md,.txt,.json"  # Also works
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
-| `read_file` | Read file contents | `path` (string) |
+| `read_file` | Read file contents (full or partial) | `path` (string), `start_line` (number, optional), `end_line` (number, optional), `max_lines` (number, optional) |
 | `write_file` | Write/overwrite file | `path` (string), `content` (string) |
 | `create_file` | Create new file | `path` (string), `content` (string, optional) |
 | `append_file` | Append to existing file | `path` (string), `content` (string) |
 | `file_exists` | Check if file exists | `path` (string) |
 | `get_file_info` | Get file metadata | `path` (string) |
+
+### 📖 read_file Advanced Usage
+
+The `read_file` tool supports flexible line-based reading:
+
+```json
+// Read entire file (default)
+{"path": "document.md"}
+
+// Read first 10 lines
+{"path": "log.txt", "max_lines": 10}
+
+// Read lines 100-200
+{"path": "code.js", "start_line": 100, "end_line": 200}
+
+// Read 20 lines starting from line 50
+{"path": "data.csv", "start_line": 50, "max_lines": 20}
+
+// Read from line 10 to end of file
+{"path": "config.json", "start_line": 10}
+```
+
+**Features:**
+- Line numbers start from 1 (human-readable)
+- Automatic range validation with helpful error messages
+- Header information showing selected range and total lines
+- Memory-efficient for large files
 
 ## 🛡️ Security Features
 
@@ -135,8 +164,10 @@ npm start
 - **Minimal and focused**: Only essential file operations
 - **Security-conscious**: Multiple validation layers
 - **Claude Code optimized**: Solves READ-before-WRITE constraints
+- **Efficient file handling**: Line-based reading for large files
 - **Modular architecture**: Easy to extend and maintain
 - **Type-safe**: Full TypeScript implementation
+- **Well-documented**: Comprehensive JSDoc comments and examples
 
 ---
 
